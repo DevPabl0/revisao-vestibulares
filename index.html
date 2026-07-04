@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Revisão USP/ITA</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121212;
+            --bg-card: #1e1e1e;
+            --text-color: #e0e0e0;
+            --primary-color: #bb86fc;
+            --secondary-color: #03dac6;
+            --danger-color: #cf6679;
+            --success-color: #4caf50;
+            --border-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        /* --- BOTÕES E MENUS --- */
+        .btn-menu {
+            width: 100%;
+            background-color: var(--bg-card);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.2s;
+        }
+
+        .btn-menu:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .btn-menu.destaque {
+            background-color: var(--primary-color);
+            color: #000;
+            font-weight: bold;
+        }
+
+        .btn-menu.sub-destaque {
+            background-color: #2c2c2c;
+            border-color: var(--secondary-color);
+            color: var(--secondary-color);
+        }
+
+        .badge {
+            background-color: var(--danger-color);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        /* --- FLASHCARDS E QUESTÕES --- */
+        .flashcard {
+            background-color: var(--bg-card);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .frente-texto {
+            font-size: 1.3em;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+        .verso-principal {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--success-color);
+            margin-bottom: 15px;
+            text-align: center;
+            padding: 15px;
+            background-color: rgba(76, 175, 80, 0.1);
+            border-radius: 8px;
+        }
+
+        .explicacao-detalhada {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .tag-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .tag {
+            background-color: #333;
+            color: #aaa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            text-transform: uppercase;
+        }
+
+        .btn-acao {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+            transition: 0.2s;
+        }
+
+        .btn-mostrar {
+            background-color: var(--secondary-color);
+            color: #000;
+            width: 100%;
+        }
+
+        .btn-erro {
+            background-color: var(--danger-color);
+            color: #fff;
+        }
+
+        .btn-acerto {
+            background-color: var(--success-color);
+            color: #fff;
+        }
+        
+        .resolucao-texto p { margin-top: 0; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 style="text-align: center; color: var(--primary-color); margin-bottom: 5px;">SISTEMA DE ALTO RENDIMENTO</h1>
+        <p id="stats" style="text-align: center; color: #888; margin-bottom: 30px; font-weight:bold;"></p>
+
+        <div id="menu-categorias" style="display: flex; flex-direction: column; width: 100%;">
+            </div>
+
+        <div id="menu-assuntos" style="display: none; flex-direction: column; width: 100%;">
+            <button class="btn-menu" onclick="voltarParaSubmenu()" style="margin-bottom: 20px;">⬅ Voltar para Matérias</button>
+            <h2 id="titulo-categoria-menu" style="text-align: center; color: var(--secondary-color); margin-bottom: 20px;"></h2>
+            
+            <div id="lista-assuntos">
+                </div>
+        </div>
+
+        <div id="revisao-area" style="display: none;">
+            <button class="btn-menu" onclick="voltarParaSubmenu()" style="margin-bottom: 20px;">⬅ Pausar Sessão</button>
+            
+            <div class="flashcard">
+                <div class="tag-container">
+                    <span class="tag" id="tag-categoria"></span>
+                    <span class="tag" id="tag-assunto"></span>
+                </div>
+                
+                <div id="frente-texto" class="frente-texto"></div>
+                
+                <button id="btn-mostrar" class="btn-acao btn-mostrar" onclick="mostrarVerso()">Mostrar Resposta</button>
+                
+                <div id="verso-area" style="display: none; margin-top: 20px;">
+                    <hr style="border-color: var(--border-color); margin-bottom: 20px;">
+                    <div id="verso-principal" class="verso-principal"></div>
+                    <div id="explicacao-detalhada" class="explicacao-detalhada"></div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 25px;">
+                        <button class="btn-acao btn-erro" onclick="julgar(false)">Errei (Volta p/ Início)</button>
+                        <button class="btn-acao btn-acerto" onclick="julgar(true)">Acertei (Avança)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="resolucoes-area" style="display: none;">
+            <button class="btn-menu" onclick="voltarParaSubmenu()" style="margin-bottom: 20px;">⬅ Voltar para Assuntos</button>
+            <h2 id="titulo-resolucoes" style="text-align: center; color: var(--secondary-color); margin-bottom: 20px;"></h2>
+            
+            <div id="lista-resolucoes">
+                </div>
+        </div>
+
+    </div>
+
+    <script src="matematica.js"></script>
+    <script src="fisica.js"></script>
+    <script src="quimica.js"></script>
+    <script src="biologia.js"></script>
+    <script src="geografia.js"></script>
+    <script src="portugues.js"></script>
+    <script>
+        // === 1. IMPORTAÇÃO DOS DECKS DE FLASHCARDS ===
+// === 1. IMPORTAÇÃO DOS DECKS DE FLASHCARDS ===
+        const baseMatematica = typeof deckMatematica !== 'undefined' ? deckMatematica : [];
+        const baseFisica     = typeof deckFisica     !== 'undefined' ? deckFisica     : [];
+        const baseQuimica    = typeof deckQuimica    !== 'undefined' ? deckQuimica    : [];
+        const baseBiologia   = typeof deckBiologia   !== 'undefined' ? deckBiologia   : [];
+        const baseHistoria   = typeof deckHistoria   !== 'undefined' ? deckHistoria   : [];
+        const baseGeografia  = typeof deckGeografia  !== 'undefined' ? deckGeografia  : [];
+        const baseFilosofia  = typeof deckFilosofia  !== 'undefined' ? deckFilosofia  : [];
+        const basePortugues  = typeof deckPortugues  !== 'undefined' ? deckPortugues  : [];
+
+
+        const defaultDeck = [
+            ...baseMatematica, ...baseFisica, ...baseQuimica, ...baseBiologia,
+            ...baseHistoria, ...baseGeografia, ...baseFilosofia, ...basePortugues
+        ];
+
+        // === 2. IMPORTAÇÃO DOS CADERNOS DE RESOLUÇÕES ===
+        const resMatematica = typeof resolucoesMatematica !== 'undefined' ? resolucoesMatematica : [];
+        const resFisica     = typeof resolucoesFisica     !== 'undefined' ? resolucoesFisica     : [];
+        const resQuimica    = typeof resolucoesQuimica    !== 'undefined' ? resolucoesQuimica    : [];
+        const resBiologia   = typeof resolucoesBiologia   !== 'undefined' ? resolucoesBiologia   : [];
+        const resHistoria   = typeof resolucoesHistoria   !== 'undefined' ? resolucoesHistoria   : [];
+        const resGeografia  = typeof resolucoesGeografia  !== 'undefined' ? resolucoesGeografia  : [];
+        const resFilosofia  = typeof resolucoesFilosofia  !== 'undefined' ? resolucoesFilosofia  : [];
+        const resPortugues  = typeof resolucoesPortugues  !== 'undefined' ? resolucoesPortugues  : [];
+
+
+        const todasResolucoes = [
+            ...resMatematica, ...resFisica, ...resQuimica, ...resBiologia,
+            ...resHistoria, ...resGeografia, ...resFilosofia, ...resPortugues
+        ];
+
+        // VARIÁVEIS GLOBAIS DE ESTADO
+        let flashcards = [];
+        let cardAtual = null;
+        let filtroCategoria = null; 
+        let filtroAssunto = null; 
+        let revisaoLivreAtiva = false; 
+        
+        // NOVO: Fila para controlar exclusivamente os cards da sessão atual
+        let filaDeRevisao = []; 
+
+        // Intervalos de revisão do Spaced Repetition (0, 1d, 3d, 7d, 15d)
+        const intervalos = [0, 86400000, 259200000, 604800000, 1296000000]; 
+
+      function carregarDados() {
+            const dadosSalvos = localStorage.getItem('flashcards_usp_v4');
+            if (dadosSalvos) {
+                flashcards = JSON.parse(dadosSalvos);
+                
+                // Percorre todos os cards dos arquivos .js
+                defaultDeck.forEach(novoCard => {
+                    const cardExistente = flashcards.find(c => c.id === novoCard.id);
+                    
+                    if (!cardExistente) {
+                        // Se o card não existe na memória, adiciona como novo
+                        flashcards.push(novoCard);
+                    } else {
+                        // Se o card JÁ EXISTE, atualiza o texto/imagens com a versão mais nova do .js
+                        // MAS mantém as datas de revisão (proximaRevisao e caixa) intactas!
+                        cardExistente.frente = novoCard.frente;
+                        cardExistente.verso_principal = novoCard.verso_principal;
+                        cardExistente.explicacao_detalhada = novoCard.explicacao_detalhada;
+                        cardExistente.categoria = novoCard.categoria;
+                        cardExistente.assunto = novoCard.assunto;
+                    }
+                });
+                salvarDados();
+            } else {
+                flashcards = JSON.parse(JSON.stringify(defaultDeck));
+                salvarDados();
+            }
+        }
+        function salvarDados() {
+            localStorage.setItem('flashcards_usp_v4', JSON.stringify(flashcards));
+        }
+
+        // --- TELA 1: CATEGORIAS ---
+        function renderizarMenuCategorias() {
+            document.getElementById('menu-categorias').style.display = 'flex';
+            document.getElementById('menu-assuntos').style.display = 'none';
+            document.getElementById('revisao-area').style.display = 'none';
+            document.getElementById('resolucoes-area').style.display = 'none';
+
+            const agora = Date.now();
+            const categoriasUnicas = [...new Set(flashcards.map(c => c.categoria))];
+            
+            let totalPendentes = 0;
+            let botoesHTML = '';
+
+            categoriasUnicas.forEach(cat => {
+                const pendentesCat = flashcards.filter(c => c.categoria === cat && c.proximaRevisao <= agora).length;
+                totalPendentes += pendentesCat;
+                
+                if(pendentesCat > 0) {
+                    botoesHTML += `<button class="btn-menu" onclick="abrirMenuAssuntos('${cat}')">
+                                      <span>${cat}</span>
+                                      <span class="badge">${pendentesCat}</span>
+                                   </button>`;
+                } else {
+                    botoesHTML += `<button class="btn-menu" style="border-color: var(--success-color);" onclick="abrirMenuAssuntos('${cat}')">
+                                      <span>${cat}</span>
+                                      <span style="color: var(--success-color); font-size: 0.9em; font-weight: bold;">✓ Em dia (Acessar)</span>
+                                   </button>`;
+                }
+            });
+
+            if (categoriasUnicas.length === 0) {
+                botoesHTML = `<p style="text-align:center; color:#aaa;">Nenhum card encontrado. Adicione arquivos .js e atualize a página.</p>`;
+            }
+
+            let botaoTudo = `<button class="btn-menu destaque" onclick="iniciarRevisao(null, null, false)">
+                                <span>Revisar Tudo (Global)</span>
+                                <span class="badge">${totalPendentes}</span>
+                             </button>`;
+
+            document.getElementById('menu-categorias').innerHTML = botaoTudo + botoesHTML;
+            document.getElementById('stats').innerText = `Selecione a matéria para estudar.`;
+        }
+
+        // --- TELA 2: ASSUNTOS ---
+        function abrirMenuAssuntos(categoria) {
+            filtroCategoria = categoria;
+            
+            document.getElementById('menu-categorias').style.display = 'none';
+            document.getElementById('menu-assuntos').style.display = 'flex';
+            document.getElementById('titulo-categoria-menu').innerText = categoria;
+
+            const agora = Date.now();
+            const cardsDaCategoria = flashcards.filter(c => c.categoria === categoria);
+            const assuntosUnicos = [...new Set(cardsDaCategoria.map(c => c.assunto || "Geral"))];
+            
+            let totalPendentesCat = 0;
+            let botoesHTML = '';
+
+            assuntosUnicos.forEach(assunto => {
+                const pendentesAssunto = flashcards.filter(c => 
+                    c.categoria === categoria && 
+                    (c.assunto === assunto || (!c.assunto && assunto === "Geral")) && 
+                    c.proximaRevisao <= agora
+                ).length;
+                
+                totalPendentesCat += pendentesAssunto;
+                
+                botoesHTML += `<div style="display: flex; gap: 10px; margin-bottom: 10px; width: 100%;">`;
+                
+                if(pendentesAssunto > 0) {
+                    botoesHTML += `<button class="btn-menu" style="flex: 1; margin-bottom: 0;" onclick="iniciarRevisao('${categoria}', '${assunto}', false)">
+                                      <span>${assunto}</span>
+                                      <span class="badge">${pendentesAssunto}</span>
+                                   </button>`;
+                } else {
+                    botoesHTML += `<button class="btn-menu" style="flex: 1; margin-bottom: 0; background-color: #2a2a2a; color: #aaa; border-style: dashed;" onclick="iniciarRevisao('${categoria}', '${assunto}', true)">
+                                      <span>${assunto}</span>
+                                      <span style="font-size: 0.85em; font-weight: bold;">🔄 Revisão Livre</span>
+                                   </button>`;
+                }
+
+                botoesHTML += `<button class="btn-menu sub-destaque" style="width: 60px; margin-bottom: 0; justify-content: center;" onclick="abrirCadernoQuestoes('${categoria}', '${assunto}')" title="Ver Caderno de Questões">📚</button>
+                               </div>`;
+            });
+
+            let botaoTudoCat = `<button class="btn-menu sub-destaque" onclick="iniciarRevisao('${categoria}', null, false)">
+                                <span>Revisar pendentes de ${categoria}</span>
+                                <span class="badge">${totalPendentesCat}</span>
+                             </button>`;
+
+            document.getElementById('lista-assuntos').innerHTML = botaoTudoCat + botoesHTML;
+            document.getElementById('stats').innerText = `Estude os cards ou acesse as resoluções no ícone 📚.`;
+        }
+
+        // --- TELA 3: REVISÃO DE FLASHCARDS ---
+        function iniciarRevisao(categoria, assunto, modoLivre = false) {
+            filtroCategoria = categoria;
+            filtroAssunto = assunto;
+            revisaoLivreAtiva = modoLivre; 
+            
+            // NOVO: Monta a fila de cards pendentes apenas UMA vez no início da sessão
+            const agora = Date.now();
+            filaDeRevisao = flashcards.filter(c => {
+                const vencido = revisaoLivreAtiva ? true : (c.proximaRevisao <= agora);
+                const naCategoria = filtroCategoria ? c.categoria === filtroCategoria : true;
+                const assuntoCard = c.assunto || "Geral";
+                const noAssunto = filtroAssunto ? assuntoCard === filtroAssunto : true;
+                return vencido && naCategoria && noAssunto;
+            });
+
+            // NOVO: Embaralha a fila aleatoriamente para evitar decorar a ordem
+            filaDeRevisao.sort(() => Math.random() - 0.5);
+
+            document.getElementById('menu-categorias').style.display = 'none';
+            document.getElementById('menu-assuntos').style.display = 'none';
+            document.getElementById('resolucoes-area').style.display = 'none';
+            document.getElementById('revisao-area').style.display = 'block';
+            
+            puxarProximoCard();
+        }
+
+        function obterCardFiltro() {
+            // Conta quantos cards restam na FILA ATUAL, e não no banco geral
+            document.getElementById('stats').innerText = revisaoLivreAtiva 
+                ? `🚀 MODO LIVRE: ${filaDeRevisao.length} cards restantes neste tópico.` 
+                : `Restam ${filaDeRevisao.length} cards nesta sessão.`;
+                
+            return filaDeRevisao.length > 0 ? filaDeRevisao[0] : null;
+        }
+
+        function puxarProximoCard() {
+            cardAtual = obterCardFiltro();
+            
+            if (!cardAtual) {
+                document.getElementById('revisao-area').innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h3>Tópico Finalizado! 🏆</h3>
+                        <p>Excelente trabalho.</p>
+                        <button class="btn-menu destaque" style="margin-top:20px; justify-content:center;" onclick="location.reload()">Voltar ao Início</button>
+                    </div>`;
+                return;
+            }
+
+            document.getElementById('tag-categoria').innerText = cardAtual.categoria;
+            document.getElementById('tag-assunto').innerText = cardAtual.assunto || "Geral";
+            document.getElementById('frente-texto').innerHTML = cardAtual.frente;
+            
+            document.getElementById('btn-mostrar').style.display = 'block';
+            document.getElementById('verso-area').style.display = 'none';
+
+            MathJax.typesetPromise([document.getElementById('revisao-area')]).catch((err) => console.log(err.message));
+        }
+
+        function mostrarVerso() {
+            document.getElementById('btn-mostrar').style.display = 'none';
+            document.getElementById('verso-principal').innerHTML = cardAtual.verso_principal;
+            document.getElementById('explicacao-detalhada').innerHTML = marked.parse(cardAtual.explicacao_detalhada);
+            document.getElementById('verso-area').style.display = 'block';
+            MathJax.typesetPromise([document.getElementById('verso-area')]).catch((err) => console.log(err.message));
+        }
+
+        function julgar(acertou) {
+            if (!cardAtual) return;
+
+            // Busca a referência original no banco global para salvar o progresso
+            const cardReal = flashcards.find(c => c.id === cardAtual.id);
+
+            if (acertou) {
+                // Se ACERTOU, remove o card da fila da sessão atual e joga a revisão para o futuro
+                filaDeRevisao.shift(); 
+                cardReal.caixa = Math.min(cardReal.caixa + 1, intervalos.length - 1);
+                cardReal.proximaRevisao = Date.now() + intervalos[cardReal.caixa];
+            } else {
+                // Se ERROU, zera a caixa (volta para o intervalo inicial)
+                // E como NÃO usamos o "filaDeRevisao.shift()", o card continua preso no topo da fila!
+                cardReal.caixa = 0; 
+                cardReal.proximaRevisao = Date.now() + intervalos[0];
+            }
+            
+            salvarDados();
+            puxarProximoCard();
+        }
+
+        // --- TELA 4: CADERNO DE QUESTÕES RESOLVIDAS ---
+        // --- TELA 4: CADERNO DE QUESTÕES RESOLVIDAS (INTERATIVO) ---
+        // --- VARIÁVEIS DE CONTROLE DO CADERNO DE QUESTÕES ---
+        let questoesSessao = [];
+        let indiceQuestaoAtual = 0;
+
+        // --- TELA 4: CADERNO DE QUESTÕES RESOLVIDAS (MODO FOCO) ---
+        function abrirCadernoQuestoes(categoria, assunto) {
+            document.getElementById('menu-categorias').style.display = 'none';
+            document.getElementById('menu-assuntos').style.display = 'none';
+            document.getElementById('revisao-area').style.display = 'none';
+            document.getElementById('resolucoes-area').style.display = 'block';
+
+            document.getElementById('titulo-resolucoes').innerText = `Caderno de Questões: ${assunto}`;
+
+            // Puxa as questões do assunto selecionado e zera o índice
+            questoesSessao = todasResolucoes.filter(q => 
+                q.categoria === categoria && 
+                (q.assunto === assunto || (!q.assunto && assunto === "Geral"))
+            );
+            indiceQuestaoAtual = 0;
+
+            if (questoesSessao.length === 0) {
+                document.getElementById('lista-resolucoes').innerHTML = `
+                <div style="text-align: center; padding: 40px 20px; background-color: var(--bg-card); border-radius: 12px; border: 1px dashed var(--border-color);">
+                    <p style="color: #888; font-size: 1.1em; margin: 0;">Nenhuma questão resolvida cadastrada para este tópico ainda.</p>
+                </div>`;
+                document.getElementById('stats').innerText = `Modo Caderno: 0 questões.`;
+            } else {
+                // Inicia o fluxo mostrando apenas a primeira questão
+                renderizarQuestaoAtual();
+            }
+        }
+
+        function renderizarQuestaoAtual() {
+            // Verifica se o usuário já chegou no final do caderno
+            if (indiceQuestaoAtual >= questoesSessao.length) {
+                document.getElementById('lista-resolucoes').innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h3>Caderno Finalizado! 📚</h3>
+                        <p>Você revisou todas as resoluções cadastradas neste tópico.</p>
+                        <button class="btn-menu destaque" style="margin-top:20px; justify-content:center;" onclick="voltarParaSubmenu()">Voltar aos Assuntos</button>
+                    </div>`;
+                document.getElementById('stats').innerText = `Treino concluído.`;
+                return;
+            }
+
+            const q = questoesSessao[indiceQuestaoAtual];
+            document.getElementById('stats').innerText = `Questão ${indiceQuestaoAtual + 1} de ${questoesSessao.length}`;
+
+            const htmlRenderizado = `
+            <div class="flashcard resolucao-texto">
+                <div style="font-size: 0.9em; color: var(--secondary-color); margin-bottom: 15px; text-transform: uppercase; font-weight: bold;">Questão Resolvida</div>
+                
+                <div style="color: var(--primary-color); font-weight: bold; margin-bottom: 8px; font-size: 1.1em;">Enunciado:</div>
+                
+                <div style="background-color: #f8f9fa; color: #121212; padding: 18px; border-radius: 8px; border-left: 5px solid var(--primary-color); margin-bottom: 20px; line-height: 1.6; font-size: 1.05em; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+                    ${marked.parse(q.enunciado)}
+                </div>
+                
+                <button id="btn-mostrar-res" class="btn-acao btn-mostrar" onclick="revelarResolucaoAtual()" style="width: 100%; margin-top: 10px;">Visualizar Resolução Passo a Passo</button>
+                
+                <div id="res-content-atual" style="display: none; margin-top: 20px;">
+                    <hr style="border-color: var(--border-color); margin: 20px 0;">
+                    <div style="color: var(--success-color); font-weight: bold; margin-bottom: 12px; font-size: 1.1em;">Resolução do Exercício:</div>
+                    <div style="line-height: 1.6; color: #e0e0e0; padding: 18px; background-color: rgba(0,0,0,0.3); border-radius: 8px; border-left: 5px solid var(--success-color);">
+                        ${marked.parse(q.resolucao)}
+                    </div>
+                    
+                    <button class="btn-acao btn-acerto" onclick="proximaQuestao()" style="width: 100%; margin-top: 25px;">Próxima Questão ➔</button>
+                </div>
+            </div>`;
+
+            document.getElementById('lista-resolucoes').innerHTML = htmlRenderizado;
+            MathJax.typesetPromise([document.getElementById('lista-resolucoes')]).catch((err) => console.log(err.message));
+        }
+
+        function revelarResolucaoAtual() {
+            document.getElementById('res-content-atual').style.display = 'block';
+            document.getElementById('btn-mostrar-res').style.display = 'none';
+            MathJax.typesetPromise([document.getElementById('res-content-atual')]).catch((err) => console.log(err.message));
+        }
+
+        function proximaQuestao() {
+            indiceQuestaoAtual++;
+            renderizarQuestaoAtual();
+        }
+
+        // Inicialização
+        carregarDados();
+        renderizarMenuCategorias();
+    </script>
+</body>
+</html>
